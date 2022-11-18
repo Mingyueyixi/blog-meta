@@ -4,7 +4,9 @@
 # @Description
 import os
 import re
-from typing import Literal
+import urllib.request
+from http.client import HTTPResponse
+from typing import Literal, Set
 
 import onceutils
 
@@ -28,6 +30,7 @@ class MarkdownLinkProcess(object):
         self.user = user
         self.project = os.path.basename(self.git_project_path)
         self.branch = branch_name
+        self.cdn_jsdelivr_urls: Set[str] = set()
 
     def process(self, ):
         for root, dirs, files in os.walk(self.git_project_path):
@@ -136,17 +139,35 @@ class MarkdownLinkProcess(object):
             # 利用jsdrive加速
             else:
                 ret = f'https://cdn.jsdelivr.net/gh/{self.user}/{self.project}{rel_path}'
+                self.cdn_jsdelivr_urls.add(ret)
         return ret
+
+
+class GitCdnManager(object):
+    def refresh(self, lst: [str], enable=False):
+        """cdn刷新"""
+        if not enable:
+            return
+        mark = 'https://cdn.jsdelivr.net/gh/'
+        for url in lst:
+            if url.startswith(mark):
+                refresh_url = f'https://purge.jsdelivr.net/gh/{url[len(mark):]}'
+                res: HTTPResponse = urllib.request.urlopen(refresh_url)
+                onceutils.bin2text(res.readlines())
+                res.close()
 
 
 def main():
     # gitee防盗链了
     git_project_path = './'
     branch = GitMan(git_project_path).branch()
-    MarkdownLinkProcess(git_project_path,
-                        mode='github',
-                        user='Mingyueyixi',
-                        branch_name=branch).process()
+    markdown_linker = MarkdownLinkProcess(git_project_path,
+                                          mode='github',
+                                          user='Mingyueyixi',
+                                          branch_name=branch)
+    markdown_linker.process()
+
+    GitCdnManager().refresh(markdown_linker.cdn_jsdelivr_urls, enable=False)
 
 
 def test_main():
