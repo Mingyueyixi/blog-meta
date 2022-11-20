@@ -99,7 +99,7 @@ class MarkdownLinkProcess(object):
             return line
         url = m.group(1)
         if m.group(0).startswith("!"):
-            fix_url = self.make_http_url(url, jsdrive=True)
+            fix_url = self.make_http_url(url, raw_show=True)
         else:
             fix_url = self.make_http_url(url)
         line = self.fix_url_line(line, url, fix_url, m.span(1))
@@ -115,11 +115,11 @@ class MarkdownLinkProcess(object):
         m = re.search(r"<img\s.*?src=([\"'])(.*?)\1.*?/?>", line, re.I)
         if m:
             src = m.group(2)
-            fix_src = self.make_http_url(src, jsdrive=True)
+            fix_src = self.make_http_url(src, raw_show=True)
             line = self.fix_url_line(line, src, fix_src, m.span(2))
         return line
 
-    def make_http_url(self, url, jsdrive=False):
+    def make_http_url(self, url, raw_show=False):
         if re.search(r'https?://|//', url, re.I):
             # 网络链接不用处理
             return False
@@ -132,12 +132,18 @@ class MarkdownLinkProcess(object):
         ret = url
         rel_path = abs_url.replace(self.git_project_path, "").replace("\\", "/")
         if 'gitee' == self.mode:
-            ret = f'https://gitee.com/{self.user}/{self.project}/raw/{self.branch}{rel_path}'
-        elif 'github' == self.mode:
-            if not jsdrive:
-                ret = f'https://raw.githubusercontent.com/{self.user}/{self.project}/{self.branch}{rel_path}'
-            # 利用jsdrive加速
+            if not raw_show:
+                # 只需要跳转到gitee预览即可
+                ret = f'https://gitee.com/{self.user}/{self.project}/tree/{self.branch}{rel_path}'
             else:
+                ret = f'https://gitee.com/{self.user}/{self.project}/raw/{self.branch}{rel_path}'
+        elif 'github' == self.mode:
+            if not raw_show:
+                # 只需要跳转到github预览即可
+                ret = f'https://github.com/{self.user}/{self.project}/tree/{self.branch}{rel_path}'
+            else:
+                # ret = f'https://raw.githubusercontent.com/{self.user}/{self.project}/{self.branch}{rel_path}'
+                # 利用jsdrive加速，通常是图片之类的资源
                 ret = f'https://cdn.jsdelivr.net/gh/{self.user}/{self.project}{rel_path}'
                 self.cdn_jsdelivr_urls.add(ret)
         return ret
@@ -162,7 +168,7 @@ def main():
     git_project_path = './'
     branch = GitMan(git_project_path).branch()
     markdown_linker = MarkdownLinkProcess(git_project_path,
-                                          mode='github',
+                                          mode='gitee',
                                           user='Mingyueyixi',
                                           branch_name=branch)
     markdown_linker.process()
