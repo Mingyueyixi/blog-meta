@@ -168,7 +168,7 @@ def main():
     git_project_path = './'
     branch = GitMan(git_project_path).branch()
     markdown_linker = MarkdownLinkProcess(git_project_path,
-                                          mode='gitee',
+                                          mode='github',
                                           user='Mingyueyixi',
                                           branch_name=branch)
     markdown_linker.process()
